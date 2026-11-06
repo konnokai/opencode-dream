@@ -1,0 +1,4 @@
+.tmp-check/
+node_modules/
+*.bak-*
+.DS_Store
