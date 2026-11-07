@@ -5,7 +5,7 @@ opencode-dream 把 OpenCode 結束的 session 蒸餾成專案記憶。
 
 ## 檔案
 
-- `global/`：安裝到 `~/.config/opencode` 的三個檔案
+- `global/`：安裝到 `~/.config/opencode` 的 plugin、指令、agent、backfill 腳本
 - `project/`：每個專案要放進 repo 的兩個檔案
 - `install.ps1`：把全域和專案兩邊裝好
 - `test/`：Bun 測試
@@ -13,7 +13,7 @@ opencode-dream 把 OpenCode 結束的 session 蒸餾成專案記憶。
 ## 架構
 
 1. `global/plugins/dream.ts`
-   - `session.idle` → 只匯出上次之後的新訊息，寫成
+   - `session.execution.succeeded/failed/interrupted` → 只匯出上次之後的新訊息，寫成
      `sessions/<sessionID>-<lastMessageID>.md`
    - 進度存在 `ctx.storage`，key 是 `dream:last:<sessionID>`
    - `session.context` hook → 把 `_index.md` 推進 system prompt
@@ -22,15 +22,20 @@ opencode-dream 把 OpenCode 結束的 session 蒸餾成專案記憶。
 2. `global/commands/dream.md`
    - `subagent: true` + `agent: dream`
    - 讀 transcript、更新記憶檔、寫 `.processed`
-3. `global/agents/dream.md`
+3. `global/commands/dream-backfill.md` + `global/scripts/dream-backfill.ts`
+   - 一次性把當前工作區所有歷史 session 匯出到 `sessions/`
+   - 直接讀本機 `opencode.db`，所以 compaction 之前的訊息也會進來
+4. `global/agents/dream.md`
    - 權限白名單：read、glob、grep，只能寫 `.opencode/memory/**`
    - 沒有 shell、webfetch、websearch、subagent、question
-4. `project/.agents/loops/dream.md`
+5. `project/.agents/loops/dream.md`
    - cron 03:00 跑 `/dream`，預設關閉
 
 ## 不能改壞的規則
 
 - plugin 只在 `.opencode/memory/` 存在時動作。不要在別的地方寫檔。
+- 增量匯出（plugin）與一次性回填（`/dream-backfill`）分開。回填不改 `ctx.storage`，
+  所以下一次 idle 會再長出一片 delta，這是預期行為。
 - 匯出一定是增量。不要每次 idle 重寫整個 context，`/dream` 刪檔後會重複長回來。
 - 刪 transcript 只能走 `.processed`。不要給 dream agent shell。
 - dream agent 的權限是白名單。不要加 shell、webfetch、websearch。
@@ -59,6 +64,8 @@ pwsh -NoProfile -Command "[scriptblock]::Create((Get-Content -LiteralPath 'insta
 
 - OpenCode V2 plugin API：`ctx.event.subscribe`、`ctx.session.hook`、`ctx.storage`
 - 驗證過 OpenCode 2.2.5
+- V2 完全不發 `session.idle`（官方 issue #55358）。要監聽 `session.execution.succeeded`、
+  `session.execution.failed`、`session.execution.interrupted`；只訂 `session.idle` 會靜靜地什麼都不做。
 - `session.context` 只回最後一次 compaction 之後的訊息，這是 API 限制
 
 ## 兩台裝置
@@ -71,4 +78,5 @@ pwsh -NoProfile -Command "[scriptblock]::Create((Get-Content -LiteralPath 'insta
 
 - 改 `renderSession`、`selectFresh`、`redact`、`isDreamSession` 就要補測試
 - 改 plugin 接線就要動 `test/plugin.test.js`
+- 改回填腳本就要動 `test/backfill.test.js`
 - 改完跑 `bun test test`，貼真實輸出

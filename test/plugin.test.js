@@ -13,7 +13,7 @@ const waitFor = async (check, timeout = 800) => {
   return false
 }
 
-const makeCtx = (dir, messages, title = "work") => {
+const makeCtx = (dir, messages, title = "work", eventType = "session.execution.succeeded") => {
   const storage = new Map()
   let hook
   return {
@@ -32,8 +32,10 @@ const makeCtx = (dir, messages, title = "work") => {
         },
       },
       event: {
-        subscribe: async function* ({ signal }) {
-          yield { type: "session.idle", data: { sessionID: "ses_1" } }
+        subscribe: async function* ({ signal, types }) {
+          if (!types || types.includes(eventType)) {
+            yield { type: eventType, data: { sessionID: "ses_1" } }
+          }
           await new Promise((resolve) => signal.addEventListener("abort", resolve, { once: true }))
         },
       },
@@ -65,6 +67,16 @@ test("exports a session into the memory folder", async () => {
   expect(readFileSync(file, "utf8")).toContain("3 pass")
   expect(readFileSync(path.join(sessions, "..", ".gitignore"), "utf8")).toContain("sessions/")
 
+  await cleanup()
+  rmSync(dir, { recursive: true, force: true })
+})
+
+test("exports after a failed execution", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "dream-failed-"))
+  mkdirSync(path.join(dir, ".opencode", "memory"), { recursive: true })
+  const { ctx } = makeCtx(dir, work, "work", "session.execution.failed")
+  const cleanup = await plugin.setup(ctx)
+  expect(await waitFor(() => existsSync(path.join(dir, ".opencode", "memory", "sessions", "ses_1-m2.md")))).toBe(true)
   await cleanup()
   rmSync(dir, { recursive: true, force: true })
 })

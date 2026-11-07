@@ -28,7 +28,10 @@ if ($SkipGlobal) {
   Write-Host "skip global plugins, commands and agents"
 } else {
   Install-File (Join-Path $here "global\plugins\dream.ts") (Join-Path $configDir "plugins\dream.ts")
-  Install-File (Join-Path $here "global\commands\dream.md") (Join-Path $configDir "commands\dream.md")
+  Get-ChildItem -LiteralPath (Join-Path $here "global\commands") -Filter "*.md" | ForEach-Object {
+    Install-File $_.FullName (Join-Path $configDir "commands\$($_.Name)")
+  }
+  Install-File (Join-Path $here "global\scripts\dream-backfill.ts") (Join-Path $configDir "scripts\dream-backfill.ts")
   Install-File (Join-Path $here "global\agents\dream.md") (Join-Path $configDir "agents\dream.md")
 }
 

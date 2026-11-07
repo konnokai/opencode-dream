@@ -214,8 +214,14 @@ export default {
     void (async () => {
       while (!controller.signal.aborted) {
         try {
+          // V2 不發 session.idle（官方 issue #55358），改用 session.execution.*；留著 session.idle 是為了舊版。
           for await (const event of ctx.event.subscribe({
-            types: ["session.idle"],
+            types: [
+              "session.execution.succeeded",
+              "session.execution.failed",
+              "session.execution.interrupted",
+              "session.idle",
+            ],
             signal: controller.signal,
           })) {
             await exportSession(event.data.sessionID)
