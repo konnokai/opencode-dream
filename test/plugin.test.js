@@ -13,7 +13,7 @@ const waitFor = async (check, timeout = 800) => {
   return false
 }
 
-const makeCtx = (dir, messages, title = "work", eventType = "session.execution.succeeded") => {
+const makeCtx = (dir, messages, title = "work", eventType = "session.execution.succeeded", parentID) => {
   const storage = new Map()
   let hook
   return {
@@ -24,7 +24,7 @@ const makeCtx = (dir, messages, title = "work", eventType = "session.execution.s
         set: async (key, value) => storage.set(key, value),
       },
       session: {
-        get: async () => ({ id: "ses_1", title, location: { directory: dir } }),
+        get: async () => ({ id: "ses_1", title, parentID, location: { directory: dir } }),
         context: async () => messages,
         hook: async (_name, fn) => {
           hook = fn
@@ -100,6 +100,23 @@ test("prunes processed transcripts and injects the index", async () => {
   expect(system).toHaveLength(1)
   expect(system[0].text).toContain("<project-memory")
   expect(system[0].text).toContain("[[build]]")
+
+  await cleanup()
+  rmSync(dir, { recursive: true, force: true })
+})
+
+test("prunes processed transcripts when a subagent session ends", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "dream-subagent-"))
+  const sessions = path.join(dir, ".opencode", "memory", "sessions")
+  mkdirSync(sessions, { recursive: true })
+  writeFileSync(path.join(sessions, "old.md"), "old")
+  writeFileSync(path.join(sessions, ".processed"), "old.md\n")
+
+  const { ctx } = makeCtx(dir, work, "work", "session.execution.succeeded", "ses_parent")
+  const cleanup = await plugin.setup(ctx)
+
+  expect(await waitFor(() => !existsSync(path.join(sessions, "old.md")))).toBe(true)
+  expect(existsSync(path.join(sessions, "ses_1-m2.md"))).toBe(false)
 
   await cleanup()
   rmSync(dir, { recursive: true, force: true })

@@ -172,12 +172,14 @@ export default {
         const session = await ctx.session.get({ sessionID })
         const directory: string | undefined = session?.location?.directory
         if (!directory) return
-        if (session.parentID) return
 
         const memoryDir = path.join(directory, MEMORY_DIR)
         if (!existsSync(memoryDir)) return
 
+        /** dream 是 subagent，它自己結束時也要清掉 .processed，loop 下一輪才數得到進度。 */
         pruneProcessed(memoryDir)
+
+        if (session.parentID) return
 
         const messages: AnyMessage[] = await ctx.session.context({ sessionID })
         if (!messages.some((message) => message.type === "user")) return

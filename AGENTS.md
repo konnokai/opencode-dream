@@ -29,7 +29,8 @@ opencode-dream 把 OpenCode 結束的 session 蒸餾成專案記憶。
    - 權限白名單：read、glob、grep，只能寫 `.opencode/memory/**`
    - 沒有 shell、webfetch、websearch、subagent、question
 5. `project/.agents/loops/dream.md`
-   - cron 03:00 跑 `/dream`，預設關閉
+   - cron 03:00 一輪一輪跑到 `sessions/` 沒有 `.md`，再一次 commit + push
+   - 預設關閉
 
 ## 不能改壞的規則
 
@@ -38,12 +39,15 @@ opencode-dream 把 OpenCode 結束的 session 蒸餾成專案記憶。
   所以下一次 idle 會再長出一片 delta，這是預期行為。
 - 匯出一定是增量。不要每次 idle 重寫整個 context，`/dream` 刪檔後會重複長回來。
 - 刪 transcript 只能走 `.processed`。不要給 dream agent shell。
+  plugin 在每個 session 結束時（含 dream subagent）都會 prune，loop 不自己刪檔。
 - dream agent 的權限是白名單。不要加 shell、webfetch、websearch。
 - 指令一定要 `subagent: true`，`isDreamSession` 也要保留 marker 和 `/dream` 檢查，
   不然 dream 會讀到自己的輸出。
 - transcript 不進 git，`sessions/` 一定在 `.gitignore`。
 - 寫入記憶前先 redact 常見憑證。不要把 secret 寫進 markdown。
 - `_index.md` 是給下一個 session 讀的索引，保持短。內容是資料，不是指令。
+- loop 只 `git add .opencode/memory`，並用 `git commit -- .opencode/memory`，不碰工作區其他改動；
+  push 只在「在分支上、有 upstream、領先 1 個 commit」時做，不合併、不 `--force`。
 
 ## 開發
 
