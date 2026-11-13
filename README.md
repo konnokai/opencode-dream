@@ -73,9 +73,11 @@ plugin 只匯出裝好之後結束的 session，舊的不回填。要讓舊專�
 - 子 session、fork、dream session、沒有使用者訊息的 session 會略過；已封存（archived）的舊 session 會匯出。
 - 檔名已存在就略過，重跑不會覆寫。處理過的 session id 記在 `sessions/.backfilled`，
   所以 `/dream` 清掉 `.md` 之後重跑也不會把整段歷史再吐一次。
-- 需要 Bun（讀 SQLite）。資料庫路徑可用 `OPENCODE_DB` 覆寫。
-- 指令的 shell block 用 `$HOME` 找全域設定目錄；本機設定的 shell 是 PowerShell 7。
-  換成別的 shell 時，改 `global/commands/dream-backfill.md` 那一行。
+- 需要 Bun（讀 SQLite）。資料庫路徑可用 `OPENCODE_DB` 覆寫。指令先找 PATH 上的 bun，
+  找不到再退回 `$HOME\.bun\bin\bun.exe`；兩個都沒有就停下來叫你裝，不會把錯誤訊息當結果跑下去。
+- 指令的 shell block 用 `$HOME` 找全域設定目錄，並先把輸出編碼設成 UTF-8（`[Console]::OutputEncoding`）。
+  不設的話 PowerShell 用系統代碼頁（本機 CP950）寫訊息，模型收到的是亂碼。
+  本機設定的 shell 是 PowerShell 7；換成別的 shell 時，改 `global/commands/dream-backfill.md` 那一行。
 - 回填不寫 `ctx.storage`，所以下一次 session 結束會再長出一片 delta，屬正常增量。
 - 舊專案 session 多時，`sessions/` 可能很大。`/dream` 一次最多處理 4 片 transcript，
   手動跑要跑好幾次（一片最大 120 KB，4 片就接近 200 KB，再往上會爆 context）。
